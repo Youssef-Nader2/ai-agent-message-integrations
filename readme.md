@@ -1,1 +1,49 @@
+# AI Agent Message Integrations
 
+Shared backend foundation for connecting message providers to an AI-agent ingestion workflow.
+
+## Architecture
+
+- FastAPI application entry point in `app/main.py`
+- SQLAlchemy database foundation configured through `DATABASE_URL`
+- SQLite is the default local development database
+- Provider integrations live under `app/integrations/`
+
+## Local setup
+
+1. Create and activate a Python virtual environment.
+2. Install dependencies with `pip install -r requirements.txt`.
+3. Copy `.env.example` to `.env` and adjust `DATABASE_URL` if needed.
+4. Run the API with `uvicorn app.main:app --reload`.
+
+The health endpoint is available at `/health`.
+
+## Integrations
+
+Discord authorization and read-only message loading are available. Slack and Telegram are intended sibling integrations under `app/integrations/`.
+
+Never commit credentials, OAuth tokens, bot tokens, or `.env` files.
+
+## Discord environment variables
+
+Configure these values in `.env`:
+
+- `DISCORD_CLIENT_ID`
+- `DISCORD_CLIENT_SECRET`
+- `DISCORD_REDIRECT_URI`
+- `DISCORD_BOT_TOKEN`
+
+## Discord Developer Portal setup
+
+Create a Discord application with a bot user and register a callback URL matching
+`DISCORD_REDIRECT_URI`. The bot installation requests only `VIEW_CHANNEL` and
+`READ_MESSAGE_HISTORY`; it is read-only and does not request Administrator or Send
+Messages. Enable the `MESSAGE_CONTENT` privileged intent when message content,
+embeds, or attachments must be available.
+
+## Persistence and security
+
+SQLite is the local default. Tables are currently bootstrapped during FastAPI startup
+with SQLAlchemy `create_all`; production deployments should adopt a migration system.
+OAuth tokens are persisted for this assignment. Production deployments should add
+encryption at rest and managed key handling.
