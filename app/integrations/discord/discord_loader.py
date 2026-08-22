@@ -183,10 +183,12 @@ def load_messages(
 ) -> list[NormalizedMessage]:
     if max_messages <= 0:
         raise DiscordIntegrationError("max_messages must be positive.", 400)
-    connection = session.scalar(
-        select(DiscordConnection).where(DiscordConnection.guild_id == guild_id)
+    connected = session.scalar(
+        select(DiscordConnection.id)
+        .where(DiscordConnection.guild_id == guild_id)
+        .limit(1)
     )
-    if connection is None:
+    if connected is None:
         raise DiscordIntegrationError("Discord connection was not found.", 404)
     headers = _bot_headers()
 

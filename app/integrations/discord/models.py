@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Integer, String, Text
+from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import TypeDecorator
 
@@ -35,10 +35,17 @@ class UTCDateTime(TypeDecorator[datetime]):
 
 class DiscordConnection(Base):
     __tablename__ = "discord_connections"
+    __table_args__ = (
+        UniqueConstraint(
+            "discord_user_id",
+            "guild_id",
+            name="uq_discord_connection_user_guild",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     discord_user_id: Mapped[str] = mapped_column(String(32), index=True)
-    guild_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    guild_id: Mapped[str] = mapped_column(String(32), index=True)
     access_token: Mapped[str] = mapped_column(Text)
     refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     token_type: Mapped[str] = mapped_column(String(32))
