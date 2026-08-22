@@ -12,7 +12,7 @@
         <div>
           <p class="eyebrow">Integration console</p>
           <h1>Discord Integration Console</h1>
-          <p class="subtitle">Inspect a connected Discord channel through the existing server-side, READ-ONLY integration.</p>
+          <p class="subtitle">Inspect connected Discord text channels through the existing server-side, READ-ONLY integration.</p>
         </div>
         <a class="connect-button" href="/integrations/discord/authorize">Connect Discord</a>
       </header>
@@ -34,9 +34,8 @@
           </div>
         </div>
         <form id="preview-form" class="preview-form">
-          <label for="guild-id">Guild ID<input id="guild-id" name="guild_id" required autocomplete="off"></label>
-          <label for="channel-id">Channel ID<input id="channel-id" name="channel_id" required autocomplete="off"></label>
-          <label for="max-messages">Max messages<input id="max-messages" name="max_messages" type="number" value="10" min="1" max="100" required></label>
+          <label id="guild-selector-container" for="guild-selector" hidden>Connected server<select id="guild-selector" name="guild_id" required></select></label>
+          <label for="max-messages">Max messages per channel<input id="max-messages" name="max_messages" type="number" value="10" min="1" max="100" required></label>
           <button id="load-messages" type="submit">Load Messages</button>
         </form>
         <p id="result-status" class="result-status" role="status" aria-live="polite"></p>

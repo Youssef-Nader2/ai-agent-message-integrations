@@ -41,6 +41,17 @@ Create a Discord application with a bot user and register a callback URL matchin
 Messages. Enable the `MESSAGE_CONTENT` privileged intent when message content,
 embeds, or attachments must be available.
 
+The Discord console discovers connected servers from persisted OAuth connections,
+then uses the application Bot token to discover standard text (`0`) and announcement
+(`5`) channels. A single connected server is selected automatically; multiple servers
+are displayed by name for selection. The console does not accept manually entered
+Guild or Channel IDs, reads up to the requested limit per readable channel, and skips
+individual channels the Bot cannot read. One Bot installation is shared per Discord
+application/server; users do not each need a Bot, and multiple users may connect the
+same server. Message history remains Bot-token-only and read-only. Production hosts
+must still protect the console with their own application authentication and
+authorization.
+
 ## Persistence and security
 
 PostgreSQL is the application database. SQLite is used only by isolated automated tests.
