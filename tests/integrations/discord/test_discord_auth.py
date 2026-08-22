@@ -54,7 +54,7 @@ def test_authorize_redirects_and_sets_state_cookie(client):
     assert "httponly" in response.headers["set-cookie"].lower()
 
 
-def test_callback_success_returns_safe_metadata(client, monkeypatch):
+def test_callback_success_redirects_to_the_fixed_gui_path_and_clears_state(client, monkeypatch):
     monkeypatch.setattr(
         discord_auth,
         "exchange_code_for_tokens",
@@ -73,12 +73,21 @@ def test_callback_success_returns_safe_metadata(client, monkeypatch):
 
     response = client.get(
         "/integrations/discord/callback",
-        params={"code": "code-secret", "state": state, "guild_id": "guild-1", "permissions": "66560"},
+        params={
+            "code": "code-secret",
+            "state": state,
+            "guild_id": "guild-1",
+            "permissions": "66560",
+            "return_url": "https://example.test/untrusted",
+        },
+        follow_redirects=False,
     )
 
-    assert response.status_code == 200
-    assert response.json() == {"connected": True, "discord_user_id": "user-1", "guild_id": "guild-1"}
-    assert "secret" not in response.text
+    assert response.status_code == 303
+    assert response.headers["location"] == "/integrations/discord/ui?connected=1"
+    assert "max-age=0" in response.headers["set-cookie"].lower()
+    assert "secret" not in response.headers["location"]
+    assert "example.test" not in response.headers["location"]
 
 
 def test_callback_rejects_missing_or_mismatched_state(client):
@@ -166,11 +175,13 @@ def test_callback_uses_token_guild_when_callback_guild_is_absent(client, monkeyp
     state = _state_from_authorize(client)
 
     response = client.get(
-        "/integrations/discord/callback", params={"code": "code", "state": state}
+        "/integrations/discord/callback",
+        params={"code": "code", "state": state},
+        follow_redirects=False,
     )
 
-    assert response.status_code == 200
-    assert response.json()["guild_id"] == "guild-from-token"
+    assert response.status_code == 303
+    assert response.headers["location"] == "/integrations/discord/ui?connected=1"
 
 
 def test_callback_rejects_callback_guild_when_token_guild_is_missing(client, monkeypatch):

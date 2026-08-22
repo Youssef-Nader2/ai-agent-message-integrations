@@ -10,8 +10,8 @@ def test_cleaner_normalizes_crlf_and_excessive_blank_lines():
     assert clean_message("one\r\n\r\n\r\n\r\ntwo") == "one\n\ntwo"
 
 
-def test_cleaner_preserves_unresolved_mentions_and_replaces_mapped_mentions():
-    assert clean_message("<@1> <#2> <@&3>") == "<@1> <#2> <@&3>"
+def test_cleaner_replaces_unresolved_mentions_and_mapped_mentions():
+    assert clean_message("<@1> <#2> <@&3>") == "@user #channel @role"
     assert clean_message(
         "<@1> <#2>", {"<@1>": "@alice", "<#2>": "#general"}
     ) == "@alice #general"
@@ -70,3 +70,30 @@ def test_cleaner_expands_abbreviation_only_message_without_corrupting_words():
 def test_cleaner_preserves_abbreviations_in_fenced_code_and_urls():
     assert clean_message("```\nbtw idk\n```") == "```\nbtw idk\n```"
     assert clean_message("https://example.com/btw") == "https://example.com/btw"
+
+
+def test_cleaner_replaces_known_and_unresolved_discord_mentions_without_snowflakes():
+    labels = {"<@123456789>": "@Youssef", "<@!123456789>": "@Youssef"}
+
+    assert clean_message("<@123456789> btw", labels) == "@Youssef by the way"
+    assert clean_message("<@!123456789>", labels) == "@Youssef"
+    assert clean_message("hello <@999999>") == "hello @user"
+    assert clean_message("<@&999> <#888>") == "@role #channel"
+
+
+def test_cleaner_removes_discord_markup_ids_but_preserves_normal_numbers_and_protections():
+    cleaned = clean_message(
+        "<:party_blob:987654321> <a:dance_cat:987654321> price 2026 https://example.test/<@123>"
+    )
+
+    assert cleaned == "party blob dance cat price 2026 https://example.test/<@123>"
+    for markup in ("<@", "<@!", "<@&", "<#", "<:", "<a:"):
+        assert markup not in clean_message("<@123> <@!123> <@&123> <#123> <:party:123> <a:dance:123>")
+    assert clean_message("```\n<@123> btw\n```") == "```\n<@123> btw\n```"
+
+
+def test_cleaner_appends_ordered_sticker_names_without_ids():
+    assert clean_message("", sticker_names=["Pepe Laugh"]) == "[sticker: Pepe Laugh]"
+    assert clean_message("lol", sticker_names=["Pepe Laugh", "Wave"]) == (
+        "laughing out loud [sticker: Pepe Laugh] [sticker: Wave]"
+    )

@@ -60,6 +60,14 @@ same server. Message history remains Bot-token-only and read-only. Production ho
 must still protect the console with their own application authentication and
 authorization.
 
+After a successful Discord authorization, the callback returns to the local Discord
+console automatically. The console refreshes connected servers and presents a
+cleaned-text view by default, while keeping technical IDs as collapsed metadata.
+Message cleaning is deterministic and rule-based: it resolves known user mentions
+from Discord message metadata, replaces unresolved Discord mention markup with
+readable placeholders, removes custom-emoji IDs, represents stickers by name, and
+preserves URLs and fenced code blocks. It is not contextual NLP or semantic analysis.
+
 ## Persistence and security
 
 PostgreSQL is the application database. SQLite is used only by isolated automated tests.

@@ -93,6 +93,76 @@ def test_loader_normalizes_one_page_attachments_and_reply(session):
     assert "bot-secret" not in repr(messages[0])
 
 
+def test_loader_normalizes_mentions_and_stickers(session):
+    _add_connection(session)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/messages"):
+            return httpx.Response(
+                200,
+                json=[
+                    _message(
+                        "message-1",
+                        mentions=[
+                            {"id": "user-1", "global_name": "Display Name", "username": "username"},
+                            {"id": "user-2", "global_name": "", "username": "fallback"},
+                        ],
+                        sticker_items=[
+                            {"id": "sticker-1", "name": "Pepe Laugh", "format_type": 1}
+                        ],
+                    )
+                ],
+            )
+        return httpx.Response(200, json={"guild_id": "guild-1"})
+
+    with _client(handler) as client:
+        message = load_messages(session, "guild-1", "channel-1", http_client=client)[0]
+
+    assert [(mention.user_id, mention.display_name) for mention in message.mentions] == [
+        ("user-1", "Display Name"),
+        ("user-2", "fallback"),
+    ]
+    assert message.stickers[0].name == "Pepe Laugh"
+    assert message.stickers[0].format_type == 1
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"mentions": [{}]},
+        {"mentions": "invalid"},
+        {"sticker_items": [{"id": "sticker-1", "name": ""}]},
+        {"sticker_items": [{"id": "sticker-1", "name": "Sticker", "format_type": True}]},
+    ],
+)
+def test_loader_rejects_malformed_mention_or_sticker_data(session, overrides):
+    _add_connection(session)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/messages"):
+            return httpx.Response(200, json=[_message("message-1", **overrides)])
+        return httpx.Response(200, json={"guild_id": "guild-1"})
+
+    with _client(handler) as client:
+        with pytest.raises(DiscordIntegrationError):
+            load_messages(session, "guild-1", "channel-1", http_client=client)
+
+
+def test_loader_defaults_missing_mentions_and_stickers_to_empty_lists(session):
+    _add_connection(session)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/messages"):
+            return httpx.Response(200, json=[_message("message-1")])
+        return httpx.Response(200, json={"guild_id": "guild-1"})
+
+    with _client(handler) as client:
+        message = load_messages(session, "guild-1", "channel-1", http_client=client)[0]
+
+    assert message.mentions == []
+    assert message.stickers == []
+
+
 def test_loader_rejects_channel_from_another_guild(session):
     _add_connection(session)
 
