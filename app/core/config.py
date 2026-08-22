@@ -3,7 +3,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     application_name: str = "AI Agent Message Integrations"
-    database_url: str = "sqlite:///./app.db"
+    database_url: str = (
+        "postgresql+psycopg://postgres:CHANGE_ME@localhost:5432/"
+        "ai_agent_message_integrations"
+    )
     discord_client_id: str | None = None
     discord_client_secret: str | None = None
     discord_redirect_uri: str | None = None

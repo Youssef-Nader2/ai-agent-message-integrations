@@ -4,3 +4,5 @@ sqlalchemy
 httpx
 pydantic-settings
 pytest
+psycopg[binary]
+emoji
