@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Discord Integration Console</title>
+    <link rel="stylesheet" href="{{ request.url_for('discord-ui-static', path='discord_console.css') }}">
+  </head>
+  <body>
+    <main class="console-shell">
+      <header class="console-header">
+        <div>
+          <p class="eyebrow">Integration console</p>
+          <h1>Discord Integration Console</h1>
+          <p class="subtitle">Inspect a connected Discord channel through the existing server-side, READ-ONLY integration.</p>
+        </div>
+        <a class="connect-button" href="/integrations/discord/authorize">Connect Discord</a>
+      </header>
+
+      <section class="panel" aria-labelledby="status-title">
+        <h2 id="status-title">Integration status</h2>
+        <div class="status-grid">
+          <div class="status-item"><span>Bot token configured</span><strong class="badge {{ 'ready' if bot_token_configured else 'pending' }}">{{ 'Yes' if bot_token_configured else 'No' }}</strong></div>
+          <div class="status-item"><span>OAuth client configured</span><strong class="badge {{ 'ready' if oauth_configured else 'pending' }}">{{ 'Yes' if oauth_configured else 'No' }}</strong></div>
+          <div class="status-item"><span>Database backend</span><strong class="badge neutral">{{ database_backend }}</strong></div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="preview-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="preview-title">Message preview</h2>
+            <p>Discord access is read-only. Messages are fetched by the server; this page never calls Discord directly.</p>
+          </div>
+        </div>
+        <form id="preview-form" class="preview-form">
+          <label for="guild-id">Guild ID<input id="guild-id" name="guild_id" required autocomplete="off"></label>
+          <label for="channel-id">Channel ID<input id="channel-id" name="channel_id" required autocomplete="off"></label>
+          <label for="max-messages">Max messages<input id="max-messages" name="max_messages" type="number" value="10" min="1" max="100" required></label>
+          <button id="load-messages" type="submit">Load Messages</button>
+        </form>
+        <p id="result-status" class="result-status" role="status" aria-live="polite"></p>
+        <div id="message-results" class="message-results" aria-live="polite"></div>
+      </section>
+    </main>
+    <script src="{{ request.url_for('discord-ui-static', path='discord_console.js') }}"></script>
+  </body>
+</html>
