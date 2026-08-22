@@ -6,7 +6,7 @@ Shared backend foundation for connecting message providers to an AI-agent ingest
 
 - FastAPI application entry point in `app/main.py`
 - SQLAlchemy database foundation configured through `DATABASE_URL`
-- SQLite is the default local development database
+- PostgreSQL is the intended application database, configured through `DATABASE_URL`
 - Provider integrations live under `app/integrations/`
 
 ## Local setup
@@ -43,7 +43,8 @@ embeds, or attachments must be available.
 
 ## Persistence and security
 
-SQLite is the local default. Tables are currently bootstrapped during FastAPI startup
-with SQLAlchemy `create_all`; production deployments should adopt a migration system.
+PostgreSQL is the application database. SQLite is used only by isolated automated tests.
+Tables are currently bootstrapped during FastAPI startup with SQLAlchemy `create_all`;
+production deployments should adopt a migration system.
 OAuth tokens are persisted for this assignment. Production deployments should add
 encryption at rest and managed key handling.
