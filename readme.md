@@ -18,6 +18,14 @@ Shared backend foundation for connecting message providers to an AI-agent ingest
 
 The health endpoint is available at `/health`.
 
+### Local Database Setup (PostgreSQL)
+
+On Windows, PostgreSQL can be installed via `winget`:
+```powershell
+winget install PostgreSQL.PostgreSQL.17
+```
+Alternatively, download the installer from [postgresql.org](https://www.postgresql.org/download/windows/).
+
 ## Integrations
 
 Discord authorization and read-only message loading are available. Slack and Telegram are intended sibling integrations under `app/integrations/`.
