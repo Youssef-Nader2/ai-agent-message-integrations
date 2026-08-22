@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Callable, Literal
 
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -31,6 +31,17 @@ class AttachmentMetadata(BaseModel):
     size: int | None
 
 
+class MentionMetadata(BaseModel):
+    user_id: str
+    display_name: str
+
+
+class StickerMetadata(BaseModel):
+    sticker_id: str
+    name: str
+    format_type: int | None = None
+
+
 class NormalizedMessage(BaseModel):
     platform: Literal["discord"]
     message_id: str
@@ -43,6 +54,8 @@ class NormalizedMessage(BaseModel):
     timestamp: datetime
     attachments: list[AttachmentMetadata]
     reply_to_message_id: str | None
+    mentions: list[MentionMetadata] = Field(default_factory=list)
+    stickers: list[StickerMetadata] = Field(default_factory=list)
 
 
 class ConnectedGuild(BaseModel):
@@ -155,6 +168,57 @@ def _normalize_attachments(value: object) -> list[AttachmentMetadata]:
     return attachments
 
 
+def _normalize_mentions(value: object) -> list[MentionMetadata]:
+    if not isinstance(value, list):
+        raise DiscordIntegrationError("Discord message data was invalid.")
+    mentions: list[MentionMetadata] = []
+    for mention in value:
+        if not isinstance(mention, dict):
+            raise DiscordIntegrationError("Discord message data was invalid.")
+        user_id = mention.get("id")
+        global_name = mention.get("global_name")
+        username = mention.get("username")
+        if not isinstance(user_id, str) or not user_id:
+            raise DiscordIntegrationError("Discord message data was invalid.")
+        if global_name is not None and not isinstance(global_name, str):
+            raise DiscordIntegrationError("Discord message data was invalid.")
+        if username is not None and not isinstance(username, str):
+            raise DiscordIntegrationError("Discord message data was invalid.")
+        display_name = (global_name or "").strip() or (username or "").strip()
+        if not display_name:
+            raise DiscordIntegrationError("Discord message data was invalid.")
+        mentions.append(MentionMetadata(user_id=user_id, display_name=display_name))
+    return mentions
+
+
+def _normalize_stickers(value: object) -> list[StickerMetadata]:
+    if not isinstance(value, list):
+        raise DiscordIntegrationError("Discord message data was invalid.")
+    stickers: list[StickerMetadata] = []
+    for sticker in value:
+        if not isinstance(sticker, dict):
+            raise DiscordIntegrationError("Discord message data was invalid.")
+        sticker_id = sticker.get("id")
+        name = sticker.get("name")
+        format_type = sticker.get("format_type")
+        if not isinstance(sticker_id, str) or not sticker_id:
+            raise DiscordIntegrationError("Discord message data was invalid.")
+        if not isinstance(name, str) or not name.strip():
+            raise DiscordIntegrationError("Discord message data was invalid.")
+        if format_type is not None and (
+            isinstance(format_type, bool) or not isinstance(format_type, int)
+        ):
+            raise DiscordIntegrationError("Discord message data was invalid.")
+        stickers.append(
+            StickerMetadata(
+                sticker_id=sticker_id,
+                name=name.strip(),
+                format_type=format_type,
+            )
+        )
+    return stickers
+
+
 def _normalize_message(
     message: object, guild_id: str, channel_id: str, channel_name: str | None = None
 ) -> NormalizedMessage:
@@ -194,6 +258,8 @@ def _normalize_message(
         timestamp=_parse_timestamp(message.get("timestamp")),
         attachments=_normalize_attachments(message.get("attachments")),
         reply_to_message_id=reply_to_message_id,
+        mentions=_normalize_mentions(message.get("mentions", [])),
+        stickers=_normalize_stickers(message.get("sticker_items", [])),
     )
 
 

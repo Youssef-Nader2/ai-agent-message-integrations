@@ -15,7 +15,9 @@ from app.integrations.discord.discord_auth_service import DiscordIntegrationErro
 from app.integrations.discord.discord_loader import (
     ConnectedGuild,
     GuildMessageLoadResult,
+    MentionMetadata,
     NormalizedMessage,
+    StickerMetadata,
 )
 
 
@@ -69,13 +71,13 @@ def test_console_renders_controls_safe_status_and_no_secrets(client):
     response = client.get("/integrations/discord/ui")
 
     assert response.status_code == 200
-    assert "Discord Integration Console" in response.text
+    assert "Discord Integration" in response.text
     assert "Connect Discord" in response.text
     assert 'id="guild-id"' not in response.text
     assert 'id="channel-id"' not in response.text
     assert 'id="guild-selector"' in response.text
     assert 'id="max-messages"' in response.text
-    assert "READ-ONLY" in response.text
+    assert "READ ONLY" in response.text
     assert "bot-secret" not in response.text
     assert "client-secret" not in response.text
 
@@ -107,6 +109,36 @@ def test_preview_reuses_loader_and_cleaner_for_safe_message_preview(client, monk
     assert preview["attachment_count"] == 0
     assert response.json()["channels_skipped"] == 1
     assert "bot-secret" not in response.text
+
+
+def test_preview_uses_mention_and_sticker_metadata_without_exposing_sticker_ids(client, monkeypatch):
+    message = _message("<@123456789> lol")
+    message = message.model_copy(
+        update={
+            "mentions": [MentionMetadata(user_id="123456789", display_name="Youssef")],
+            "stickers": [StickerMetadata(sticker_id="987654321", name="Pepe Laugh")],
+        }
+    )
+
+    monkeypatch.setattr(
+        discord_ui,
+        "load_guild_messages",
+        lambda *_: GuildMessageLoadResult(
+            messages=[message],
+            supported_channels_discovered=1,
+            channels_successfully_read=1,
+            channels_skipped=0,
+        ),
+    )
+
+    response = client.post("/integrations/discord/ui/load", json={"guild_id": "guild-1"})
+
+    assert response.status_code == 200
+    preview = response.json()["messages"][0]
+    assert preview["cleaned_content"] == "@Youssef laughing out loud [sticker: Pepe Laugh]"
+    assert preview["mention_names"] == ["Youssef"]
+    assert preview["sticker_names"] == ["Pepe Laugh"]
+    assert "987654321" not in response.text
 
 
 @pytest.mark.parametrize("max_messages", [0, 101])
@@ -165,6 +197,23 @@ def test_console_script_auto_selects_one_guild_and_shows_named_multi_guild_selec
     assert "guildSelectorContainer.hidden = false" in script
     assert "option.textContent = guild.guild_name" in script
     assert "channel_id: formData.get" not in script
+
+
+def test_console_includes_dynamic_read_only_controls_and_safe_local_requests(client):
+    page = client.get("/integrations/discord/ui")
+    script = (discord_ui.STATIC_DIR / "discord_console.js").read_text(encoding="utf-8")
+
+    assert 'id="message-search"' in page.text
+    assert 'id="channel-filter"' in page.text
+    assert 'id="view-mode"' in page.text
+    assert 'id="sort-order"' in page.text
+    assert 'id="connection-success"' in page.text
+    assert "new URL(window.location.href)" in script
+    assert "history.replaceState" in script
+    assert 'fetch("/integrations/discord/ui/guilds")' in script
+    assert 'fetch("/integrations/discord/ui/load"' in script
+    assert "discord.com" not in script
+    assert "innerHTML" not in script
 
 
 def test_gui_introduces_only_read_endpoints_and_preserves_auth_routes():

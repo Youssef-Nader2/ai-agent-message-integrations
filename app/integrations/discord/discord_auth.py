@@ -101,13 +101,9 @@ def callback(
     except DiscordIntegrationError as exc:
         return _error_response(exc.status_code, str(exc), clear_state=True)
 
-    response = JSONResponse(
-        status_code=200,
-        content={
-            "connected": True,
-            "discord_user_id": connection.discord_user_id,
-            "guild_id": connection.guild_id,
-        },
+    response = RedirectResponse(
+        url="/integrations/discord/ui?connected=1",
+        status_code=303,
     )
     response.delete_cookie(STATE_COOKIE_NAME, secure=_state_cookie_is_secure(), samesite="lax")
     return response

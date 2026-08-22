@@ -3,42 +3,65 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Discord Integration Console</title>
+    <title>Discord Integration</title>
     <link rel="stylesheet" href="{{ request.url_for('discord-ui-static', path='discord_console.css') }}">
   </head>
   <body>
     <main class="console-shell">
       <header class="console-header">
-        <div>
-          <p class="eyebrow">Integration console</p>
-          <h1>Discord Integration Console</h1>
-          <p class="subtitle">Inspect connected Discord text channels through the existing server-side, READ-ONLY integration.</p>
+        <div class="header-copy">
+          <div class="eyebrow-row"><span class="eyebrow">AI Agent integration</span><span class="read-only-badge">READ ONLY</span></div>
+          <h1>Discord Integration</h1>
+          <p class="subtitle">Discover connected servers and preview readable text channels without entering technical IDs.</p>
         </div>
         <a class="connect-button" href="/integrations/discord/authorize">Connect Discord</a>
       </header>
 
-      <section class="panel" aria-labelledby="status-title">
-        <h2 id="status-title">Integration status</h2>
-        <div class="status-grid">
-          <div class="status-item"><span>Bot token configured</span><strong class="badge {{ 'ready' if bot_token_configured else 'pending' }}">{{ 'Yes' if bot_token_configured else 'No' }}</strong></div>
-          <div class="status-item"><span>OAuth client configured</span><strong class="badge {{ 'ready' if oauth_configured else 'pending' }}">{{ 'Yes' if oauth_configured else 'No' }}</strong></div>
-          <div class="status-item"><span>Database backend</span><strong class="badge neutral">{{ database_backend }}</strong></div>
-        </div>
+      <section id="connection-success" class="connection-success" hidden role="status" aria-live="polite">
+        <span class="success-icon" aria-hidden="true">✓</span>
+        <div><strong>Discord connected successfully.</strong><span>Your connected servers are being refreshed.</span></div>
       </section>
 
-      <section class="panel" aria-labelledby="preview-title">
+      <section class="status-grid" aria-label="Integration status">
+        <article class="status-card"><span class="status-label">Bot access</span><strong>{{ 'Configured' if bot_token_configured else 'Needs setup' }}</strong><span class="status-note">{{ 'Ready for read-only history' if bot_token_configured else 'Add Bot Token locally' }}</span></article>
+        <article class="status-card"><span class="status-label">OAuth client</span><strong>{{ 'Configured' if oauth_configured else 'Needs setup' }}</strong><span class="status-note">{{ 'Ready to connect Discord' if oauth_configured else 'Add OAuth settings locally' }}</span></article>
+        <article class="status-card"><span class="status-label">Database</span><strong>{{ database_backend }}</strong><span class="status-note">Connection records stay server-side</span></article>
+      </section>
+
+      <section class="panel load-panel" aria-labelledby="preview-title">
         <div class="section-heading">
           <div>
             <h2 id="preview-title">Message preview</h2>
-            <p>Discord access is read-only. Messages are fetched by the server; this page never calls Discord directly.</p>
+            <p>Messages are fetched server-side with the application Bot. Supported text channels are discovered automatically.</p>
           </div>
         </div>
         <form id="preview-form" class="preview-form">
           <label id="guild-selector-container" for="guild-selector" hidden>Connected server<select id="guild-selector" name="guild_id" required></select></label>
           <label for="max-messages">Max messages per channel<input id="max-messages" name="max_messages" type="number" value="10" min="1" max="100" required></label>
-          <button id="load-messages" type="submit">Load Messages</button>
+          <button id="load-messages" type="submit"><span class="button-spinner" aria-hidden="true"></span><span>Load messages</span></button>
         </form>
+        <p class="helper-text">One connected server is selected automatically. Choose by name when multiple servers are connected.</p>
         <p id="result-status" class="result-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="summary" class="summary-grid" aria-label="Load summary" hidden>
+        <article><span>Messages loaded</span><strong id="summary-messages">0</strong></article>
+        <article><span>Readable channels</span><strong id="summary-readable">0</strong></article>
+        <article><span>Skipped channels</span><strong id="summary-skipped">0</strong></article>
+        <article><span>Channels discovered</span><strong id="summary-discovered">0</strong></article>
+      </section>
+
+      <section id="message-panel" class="panel message-panel" aria-labelledby="messages-title">
+        <div class="section-heading">
+          <div><h2 id="messages-title">Loaded messages</h2><p>Cleaned text is shown first. Use the toolbar to refine this local preview.</p></div>
+        </div>
+        <div id="message-toolbar" class="message-toolbar" hidden>
+          <label for="message-search">Search<input id="message-search" type="search" placeholder="Search author, channel, or text"></label>
+          <label for="channel-filter">Channel<select id="channel-filter"><option value="">All channels</option></select></label>
+          <label for="view-mode">View<select id="view-mode"><option value="cleaned">Cleaned</option><option value="original">Original</option><option value="both">Both</option></select></label>
+          <label for="sort-order">Sort<select id="sort-order"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label>
+        </div>
+        <div id="empty-state" class="empty-state">Load messages to see a read-only preview.</div>
         <div id="message-results" class="message-results" aria-live="polite"></div>
       </section>
     </main>

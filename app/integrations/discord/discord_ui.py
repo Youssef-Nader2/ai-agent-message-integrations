@@ -48,6 +48,8 @@ class DiscordMessagePreview(BaseModel):
     cleaned_truncated: bool
     attachment_count: int
     reply_to_message_id: str | None
+    mention_names: list[str]
+    sticker_names: list[str]
 
 
 class DiscordPreviewResponse(BaseModel):
@@ -129,8 +131,21 @@ def load_discord_preview(
 
     previews: list[DiscordMessagePreview] = []
     for message in result.messages:
+        mention_labels = {
+            f"<@{mention.user_id}>": f"@{mention.display_name}"
+            for mention in message.mentions
+        }
+        mention_labels.update(
+            {
+                f"<@!{mention.user_id}>": f"@{mention.display_name}"
+                for mention in message.mentions
+            }
+        )
+        sticker_names = [sticker.name for sticker in message.stickers]
         original_content, original_truncated = _preview_text(message.content)
-        cleaned_content, cleaned_truncated = _preview_text(clean_message(message.content))
+        cleaned_content, cleaned_truncated = _preview_text(
+            clean_message(message.content, mention_labels, sticker_names)
+        )
         previews.append(
             DiscordMessagePreview(
                 message_id=message.message_id,
@@ -146,6 +161,8 @@ def load_discord_preview(
                 cleaned_truncated=cleaned_truncated,
                 attachment_count=len(message.attachments),
                 reply_to_message_id=message.reply_to_message_id,
+                mention_names=[mention.display_name for mention in message.mentions],
+                sticker_names=sticker_names,
             )
         )
     return DiscordPreviewResponse(
