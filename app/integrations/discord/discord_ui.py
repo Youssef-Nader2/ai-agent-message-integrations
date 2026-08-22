@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.session import engine, get_db
 from app.integrations.discord.discord_auth_service import DiscordIntegrationError
-from app.integrations.discord.discord_loader import load_messages
+from app.integrations.discord.discord_loader import (
+    ConnectedGuild,
+    list_connected_guilds,
+    load_guild_messages,
+)
 from app.integrations.discord.message_cleaner import clean_message
 
 
@@ -27,12 +31,14 @@ class DiscordPreviewRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     guild_id: str = Field(min_length=1)
-    channel_id: str = Field(min_length=1)
     max_messages: int = Field(default=10, ge=1, le=100)
 
 
 class DiscordMessagePreview(BaseModel):
     message_id: str
+    guild_id: str
+    channel_id: str
+    channel_name: str | None
     author_id: str
     author_name: str | None
     timestamp: datetime
@@ -46,6 +52,13 @@ class DiscordMessagePreview(BaseModel):
 
 class DiscordPreviewResponse(BaseModel):
     messages: list[DiscordMessagePreview]
+    supported_channels_discovered: int
+    channels_successfully_read: int
+    channels_skipped: int
+
+
+class ConnectedGuildsResponse(BaseModel):
+    guilds: list[ConnectedGuild]
 
 
 def _preview_text(content: str) -> tuple[str, bool]:
@@ -85,16 +98,27 @@ def discord_console(request: Request) -> HTMLResponse:
     )
 
 
+@router.get("/ui/guilds", response_model=ConnectedGuildsResponse)
+def connected_guilds(session: Session = Depends(get_db)) -> ConnectedGuildsResponse:
+    try:
+        guilds = list_connected_guilds(session)
+    except DiscordIntegrationError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=_safe_error_detail(exc),
+        ) from exc
+    return ConnectedGuildsResponse(guilds=guilds)
+
+
 @router.post("/ui/load", response_model=DiscordPreviewResponse)
 def load_discord_preview(
     preview_request: DiscordPreviewRequest,
     session: Session = Depends(get_db),
 ) -> DiscordPreviewResponse:
     try:
-        messages = load_messages(
+        result = load_guild_messages(
             session,
             preview_request.guild_id,
-            preview_request.channel_id,
             preview_request.max_messages,
         )
     except DiscordIntegrationError as exc:
@@ -104,12 +128,15 @@ def load_discord_preview(
         ) from exc
 
     previews: list[DiscordMessagePreview] = []
-    for message in messages:
+    for message in result.messages:
         original_content, original_truncated = _preview_text(message.content)
         cleaned_content, cleaned_truncated = _preview_text(clean_message(message.content))
         previews.append(
             DiscordMessagePreview(
                 message_id=message.message_id,
+                guild_id=message.guild_id,
+                channel_id=message.channel_id,
+                channel_name=message.channel_name,
                 author_id=message.author_id,
                 author_name=message.author_name,
                 timestamp=message.timestamp,
@@ -121,4 +148,9 @@ def load_discord_preview(
                 reply_to_message_id=message.reply_to_message_id,
             )
         )
-    return DiscordPreviewResponse(messages=previews)
+    return DiscordPreviewResponse(
+        messages=previews,
+        supported_channels_discovered=result.supported_channels_discovered,
+        channels_successfully_read=result.channels_successfully_read,
+        channels_skipped=result.channels_skipped,
+    )
