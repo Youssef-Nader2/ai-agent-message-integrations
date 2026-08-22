@@ -46,5 +46,8 @@ embeds, or attachments must be available.
 PostgreSQL is the application database. SQLite is used only by isolated automated tests.
 Tables are currently bootstrapped during FastAPI startup with SQLAlchemy `create_all`;
 production deployments should adopt a migration system.
+Existing databases created before the Discord multi-user connection change require a
+schema migration to replace `unique(guild_id)` with
+`unique(discord_user_id, guild_id)`; `create_all` does not alter existing constraints.
 OAuth tokens are persisted for this assignment. Production deployments should add
 encryption at rest and managed key handling.

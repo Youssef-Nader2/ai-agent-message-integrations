@@ -242,7 +242,10 @@ def save_or_update_connection(
     granted_permissions: str | None,
 ) -> DiscordConnection:
     connection = session.scalar(
-        select(DiscordConnection).where(DiscordConnection.guild_id == guild_id)
+        select(DiscordConnection).where(
+            DiscordConnection.discord_user_id == discord_user_id,
+            DiscordConnection.guild_id == guild_id,
+        )
     )
     if connection is None:
         connection = DiscordConnection(
